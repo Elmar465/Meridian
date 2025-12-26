@@ -20,16 +20,16 @@ spring:
         dialect: org.hibernate.dialect.MySQL8Dialect
         format_sql: true
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: elmar465@gmail.com
-    password: resbgpogpjkooxls
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:elmar465@gmail.com}
+    password: ${SPRING_MAIL_PASSWORD:resbgpogpjkooxls}
     properties:
       mail:
         smtp:
-          auth: true
+          auth: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:true}
           starttls:
-            enable: true
+            enable: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:true}
             required: true
             connectiontimeout: 5000
             timeout: 5000
