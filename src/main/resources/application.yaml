@@ -39,7 +39,7 @@ file:
   upload-dir: uploads
 
 server:
-  port: 8081
+  port: ${PORT:8081}
 
 jwt:
   secret: mni1T1FvYLls72sdkfBPlvkBRJTERKqOh15X7zuMoQ0=
