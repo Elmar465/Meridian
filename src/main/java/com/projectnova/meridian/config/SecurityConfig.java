@@ -42,10 +42,18 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        // Public endpoints
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/invitations/validate/**").permitAll()
                         .requestMatchers("/api/invitations/accept").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
+
+                        // Swagger UI - ADD THESE 3 LINES
+                        .requestMatchers("/swagger-ui/**").permitAll()
+                        .requestMatchers("/swagger-ui.html").permitAll()
+                        .requestMatchers("/v3/api-docs/**").permitAll()
+
+                        // Projects
                         .requestMatchers(HttpMethod.GET, "/api/projects/**").hasAnyRole("ADMIN", "MANAGER", "MEMBER")
                         .requestMatchers(HttpMethod.POST, "/api/projects/**").hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers(HttpMethod.PUT, "/api/projects/**").hasAnyRole("ADMIN", "MANAGER")
@@ -65,7 +73,7 @@ public class SecurityConfig {
                         // Invitations - other endpoints secured by @PreAuthorize
                         .requestMatchers("/api/invitations/**").authenticated()
 
-                        //Messaging
+                        // Messaging
                         .requestMatchers("/api/messages/**").authenticated()
                         .anyRequest().authenticated()
                 )
