@@ -60,3 +60,6 @@ springdoc:
     operations-sorter: method
     tags-sorter: alpha
   packages-to-scan: com.projectnova.meridian.controller
+
+resend:
+  api-key: ${RESEND_API_KEY:re_jB9xU72U_JutwRMHwcY7Y1uoNhfxpxXpp}

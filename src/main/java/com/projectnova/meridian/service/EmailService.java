@@ -1,123 +1,121 @@
 package com.projectnova.meridian.service;
 
 import com.projectnova.meridian.model.*;
-import lombok.RequiredArgsConstructor;
+import com.resend.Resend;
+import com.resend.services.emails.model.CreateEmailOptions;
+import com.resend.services.emails.model.CreateEmailResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class EmailService {
 
-    private final JavaMailSender mailSender;
+    private final Resend resend;
+    private final String fromEmail;
+    private final String frontendUrl;
 
-    @Value("${spring.mail.username}")
-    private String fromEmail;
-
-    @Value("${app.frontend-url:https://meridian-front-end.vercel.app}")
-    private String frontendUrl;
-
-    @Async
-    public void sendInvitationEmail(User user, Invitation invitation) {
-        try {
-            SimpleMailMessage mailMessage = new SimpleMailMessage();
-            mailMessage.setFrom(fromEmail);
-            mailMessage.setTo(invitation.getEmail());
-            mailMessage.setSubject("Invitation to Join Meridian");
-            mailMessage.setText(String.format(
-                    """
-                            Hi there,
-                            
-                            %s has invited you to join Meridian as a %s.
-                            
-                            Click the link below to accept your invitation:
-                            %s/accept-invite?token=%s
-                            
-                            This invitation expires in 7 days.
-                            
-                            Best regards,
-                            Meridian Team
-                            """,
-                    user.getFirstName() + " " + user.getLastName(),
-                    invitation.getRole(),
-                    frontendUrl,
-                    invitation.getToken()
-            ));
-            mailSender.send(mailMessage);
-            log.info("Invitation email sent to: {}", invitation.getEmail());
-        } catch (Exception e) {
-            log.error("Error sending invitation email to: {}", invitation.getEmail(), e);
-        }
+    public EmailService(
+            @Value("${resend.api-key}") String apiKey,
+            @Value("${app.frontend-url:https://meridian-front-end.vercel.app}") String frontendUrl
+    ) {
+        this.resend = new Resend(apiKey);
+        this.fromEmail = "Meridian <onboarding@resend.dev>";
+        this.frontendUrl = frontendUrl;
     }
 
     @Async
     public void sendWelcomeEmail(User user) {
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(user.getEmail());
-            message.setSubject("Welcome to Meridian");
-            message.setText(String.format(
-                    """
-                            Hi %s,
-                            
-                            Welcome to Meridian Project Management System!
-                            
-                            Your account has been successfully created.
-                            Username: %s
-                            
-                            Start managing your projects efficiently!
-                            
-                            Best Regards,
-                            Meridian Team
+            CreateEmailOptions options = CreateEmailOptions.builder()
+                    .from(fromEmail)
+                    .to(user.getEmail())
+                    .subject("Welcome to Meridian")
+                    .html(String.format(
+                            """
+                            <h2>Hi %s,</h2>
+                            <p>Welcome to <strong>Meridian Project Management System</strong>!</p>
+                            <p>Your account has been successfully created.</p>
+                            <p><strong>Username:</strong> %s</p>
+                            <p>Start managing your projects efficiently!</p>
+                            <br>
+                            <p>Best Regards,<br>Meridian Team</p>
                             """,
-                    user.getFirstName(),
-                    user.getUsername()
-            ));
-            mailSender.send(message);
-            log.info("Welcome email sent to: {}", user.getEmail());
+                            user.getFirstName(),
+                            user.getUsername()
+                    ))
+                    .build();
+
+            CreateEmailResponse response = resend.emails().send(options);
+            log.info("Welcome email sent to: {} - ID: {}", user.getEmail(), response.getId());
         } catch (Exception e) {
             log.error("Failed to send welcome email to: {}", user.getEmail(), e);
         }
     }
 
     @Async
+    public void sendInvitationEmail(User user, Invitation invitation) {
+        try {
+            CreateEmailOptions options = CreateEmailOptions.builder()
+                    .from(fromEmail)
+                    .to(invitation.getEmail())
+                    .subject("Invitation to Join Meridian")
+                    .html(String.format(
+                            """
+                            <h2>Hi there,</h2>
+                            <p><strong>%s</strong> has invited you to join Meridian as a <strong>%s</strong>.</p>
+                            <p>Click the link below to accept your invitation:</p>
+                            <p><a href="%s/accept-invite?token=%s">Accept Invitation</a></p>
+                            <p>This invitation expires in 7 days.</p>
+                            <br>
+                            <p>Best regards,<br>Meridian Team</p>
+                            """,
+                            user.getFirstName() + " " + user.getLastName(),
+                            invitation.getRole(),
+                            frontendUrl,
+                            invitation.getToken()
+                    ))
+                    .build();
+
+            CreateEmailResponse response = resend.emails().send(options);
+            log.info("Invitation email sent to: {} - ID: {}", invitation.getEmail(), response.getId());
+        } catch (Exception e) {
+            log.error("Error sending invitation email to: {}", invitation.getEmail(), e);
+        }
+    }
+
+    @Async
     public void sendIssueAssignmentEmail(Issue issue, User assignee) {
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(assignee.getEmail());
-            message.setSubject("New Issue Assigned: " + issue.getProject().getKey() + "-" + issue.getIssueNumber());
-            message.setText(String.format(
-                    """
-                            Hi %s,
-                            
-                            You have been assigned a new issue:
-                            
-                            Issue: %s-%s
-                            Title: %s
-                            Priority: %s
-                            Project: %s
-                            
-                            Please review and start working on it.
-                            
-                            Best regards,
-                            Meridian Team
+            CreateEmailOptions options = CreateEmailOptions.builder()
+                    .from(fromEmail)
+                    .to(assignee.getEmail())
+                    .subject("New Issue Assigned: " + issue.getProject().getKey() + "-" + issue.getIssueNumber())
+                    .html(String.format(
+                            """
+                            <h2>Hi %s,</h2>
+                            <p>You have been assigned a new issue:</p>
+                            <p><strong>Issue:</strong> %s-%s</p>
+                            <p><strong>Title:</strong> %s</p>
+                            <p><strong>Priority:</strong> %s</p>
+                            <p><strong>Project:</strong> %s</p>
+                            <p>Please review and start working on it.</p>
+                            <br>
+                            <p>Best regards,<br>Meridian Team</p>
                             """,
-                    assignee.getFirstName(),
-                    issue.getProject().getKey(),
-                    issue.getIssueNumber(),
-                    issue.getTitle(),
-                    issue.getPriority(),
-                    issue.getProject().getName()
-            ));
-            mailSender.send(message);
-            log.info("Assignment email sent to: {}", assignee.getEmail());
+                            assignee.getFirstName(),
+                            issue.getProject().getKey(),
+                            issue.getIssueNumber(),
+                            issue.getTitle(),
+                            issue.getPriority(),
+                            issue.getProject().getName()
+                    ))
+                    .build();
+
+            CreateEmailResponse response = resend.emails().send(options);
+            log.info("Assignment email sent to: {} - ID: {}", assignee.getEmail(), response.getId());
         } catch (Exception e) {
             log.error("Failed to send assignment email to: {}", assignee.getEmail(), e);
         }
@@ -126,33 +124,32 @@ public class EmailService {
     @Async
     public void sendIssueStatusChangeEmail(Issue issue, IssueStatus oldStatus, IssueStatus newStatus) {
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(issue.getAssignee().getEmail());
-            message.setSubject("Issue Status Updated: " + issue.getProject().getKey() + "-" + issue.getIssueNumber());
-            message.setText(String.format(
-                    """
-                            Hi %s,
-                            
-                            Issue status has been updated:
-                            
-                            Issue: %s-%s
-                            Title: %s
-                            Old Status: %s
-                            New Status: %s
-                            
-                            Best regards,
-                            Meridian Team
+            CreateEmailOptions options = CreateEmailOptions.builder()
+                    .from(fromEmail)
+                    .to(issue.getAssignee().getEmail())
+                    .subject("Issue Status Updated: " + issue.getProject().getKey() + "-" + issue.getIssueNumber())
+                    .html(String.format(
+                            """
+                            <h2>Hi %s,</h2>
+                            <p>Issue status has been updated:</p>
+                            <p><strong>Issue:</strong> %s-%s</p>
+                            <p><strong>Title:</strong> %s</p>
+                            <p><strong>Old Status:</strong> %s</p>
+                            <p><strong>New Status:</strong> %s</p>
+                            <br>
+                            <p>Best regards,<br>Meridian Team</p>
                             """,
-                    issue.getAssignee().getFirstName(),
-                    issue.getProject().getKey(),
-                    issue.getIssueNumber(),
-                    issue.getTitle(),
-                    oldStatus,
-                    newStatus
-            ));
-            mailSender.send(message);
-            log.info("Status change email sent to: {}", issue.getAssignee().getEmail());
+                            issue.getAssignee().getFirstName(),
+                            issue.getProject().getKey(),
+                            issue.getIssueNumber(),
+                            issue.getTitle(),
+                            oldStatus,
+                            newStatus
+                    ))
+                    .build();
+
+            CreateEmailResponse response = resend.emails().send(options);
+            log.info("Status change email sent to: {} - ID: {}", issue.getAssignee().getEmail(), response.getId());
         } catch (Exception e) {
             log.error("Failed to send status change email", e);
         }
@@ -163,34 +160,33 @@ public class EmailService {
         Issue issue = comment.getIssue();
         if (issue.getAssignee() != null && !issue.getAssignee().getId().equals(comment.getUser().getId())) {
             try {
-                SimpleMailMessage message = new SimpleMailMessage();
-                message.setFrom(fromEmail);
-                message.setTo(issue.getAssignee().getEmail());
-                message.setSubject("New Comment on Issue: " + issue.getProject().getKey() + "-" + issue.getIssueNumber());
-                message.setText(String.format(
-                        """
-                                Hi %s,
-                                
-                                New comment added to issue:
-                                
-                                Issue: %s-%s
-                                Title: %s
-                                Comment by: %s %s
-                                Comment: %s
-                                
-                                Best regards,
-                                Meridian Team
+                CreateEmailOptions options = CreateEmailOptions.builder()
+                        .from(fromEmail)
+                        .to(issue.getAssignee().getEmail())
+                        .subject("New Comment on Issue: " + issue.getProject().getKey() + "-" + issue.getIssueNumber())
+                        .html(String.format(
+                                """
+                                <h2>Hi %s,</h2>
+                                <p>New comment added to issue:</p>
+                                <p><strong>Issue:</strong> %s-%s</p>
+                                <p><strong>Title:</strong> %s</p>
+                                <p><strong>Comment by:</strong> %s %s</p>
+                                <p><strong>Comment:</strong> %s</p>
+                                <br>
+                                <p>Best regards,<br>Meridian Team</p>
                                 """,
-                        issue.getAssignee().getFirstName(),
-                        issue.getProject().getKey(),
-                        issue.getIssueNumber(),
-                        issue.getTitle(),
-                        comment.getUser().getFirstName(),
-                        comment.getUser().getLastName(),
-                        comment.getContent()
-                ));
-                mailSender.send(message);
-                log.info("Comment notification sent to: {}", issue.getAssignee().getEmail());
+                                issue.getAssignee().getFirstName(),
+                                issue.getProject().getKey(),
+                                issue.getIssueNumber(),
+                                issue.getTitle(),
+                                comment.getUser().getFirstName(),
+                                comment.getUser().getLastName(),
+                                comment.getContent()
+                        ))
+                        .build();
+
+                CreateEmailResponse response = resend.emails().send(options);
+                log.info("Comment notification sent to: {} - ID: {}", issue.getAssignee().getEmail(), response.getId());
             } catch (Exception e) {
                 log.error("Failed to send comment notification", e);
             }
@@ -200,30 +196,28 @@ public class EmailService {
     @Async
     public void sendProjectMemberAddedEmail(Project project, User newMember) {
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(newMember.getEmail());
-            message.setSubject("Added to Project: " + project.getName());
-            message.setText(String.format(
-                    """
-                            Hi %s,
-                            
-                            You have been added to a new project:
-                            
-                            Project: %s
-                            Description: %s
-                            
-                            You can now view and contribute to this project.
-                            
-                            Best regards,
-                            Meridian Team
+            CreateEmailOptions options = CreateEmailOptions.builder()
+                    .from(fromEmail)
+                    .to(newMember.getEmail())
+                    .subject("Added to Project: " + project.getName())
+                    .html(String.format(
+                            """
+                            <h2>Hi %s,</h2>
+                            <p>You have been added to a new project:</p>
+                            <p><strong>Project:</strong> %s</p>
+                            <p><strong>Description:</strong> %s</p>
+                            <p>You can now view and contribute to this project.</p>
+                            <br>
+                            <p>Best regards,<br>Meridian Team</p>
                             """,
-                    newMember.getFirstName(),
-                    project.getName(),
-                    project.getDescription()
-            ));
-            mailSender.send(message);
-            log.info("Project addition email sent to: {}", newMember.getEmail());
+                            newMember.getFirstName(),
+                            project.getName(),
+                            project.getDescription()
+                    ))
+                    .build();
+
+            CreateEmailResponse response = resend.emails().send(options);
+            log.info("Project addition email sent to: {} - ID: {}", newMember.getEmail(), response.getId());
         } catch (Exception e) {
             log.error("Failed to send project addition email", e);
         }
