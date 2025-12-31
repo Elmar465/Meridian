@@ -6,6 +6,7 @@ import com.projectnova.meridian.dto.*;
 import com.projectnova.meridian.exceptions.DuplicateResourceException;
 import com.projectnova.meridian.exceptions.ResourceNotFoundException;
 import com.projectnova.meridian.model.Organization;
+import com.projectnova.meridian.model.OrganizationStatus;
 import com.projectnova.meridian.model.User;
 import com.projectnova.meridian.model.UserRole;
 import com.projectnova.meridian.service.EmailService;

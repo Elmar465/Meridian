@@ -1,4 +1,4 @@
-package com.projectnova.meridian.dto;
+package com.projectnova.meridian.model;
 
 public enum OrganizationStatus {
     ACTIVE,

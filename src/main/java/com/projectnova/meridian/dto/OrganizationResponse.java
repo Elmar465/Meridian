@@ -1,6 +1,7 @@
 package com.projectnova.meridian.dto;
 
 
+import com.projectnova.meridian.model.OrganizationStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

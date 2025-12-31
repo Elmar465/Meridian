@@ -5,10 +5,7 @@ import com.projectnova.meridian.dao.UserRepository;
 import com.projectnova.meridian.dto.*;
 import com.projectnova.meridian.exceptions.DuplicateResourceException;
 import com.projectnova.meridian.exceptions.ResourceNotFoundException;
-import com.projectnova.meridian.model.Invitation;
-import com.projectnova.meridian.model.InvitationStatus;
-import com.projectnova.meridian.model.User;
-import com.projectnova.meridian.model.UserRole;
+import com.projectnova.meridian.model.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -23,7 +20,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor

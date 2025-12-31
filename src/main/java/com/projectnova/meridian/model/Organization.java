@@ -1,7 +1,6 @@
 package com.projectnova.meridian.model;
 
 
-import com.projectnova.meridian.dto.OrganizationStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
