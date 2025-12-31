@@ -75,8 +75,10 @@ public class UserController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<Page<UserResponse>> searchUsers(@RequestParam String searchTerm, Pageable pageable) {
-        Page<UserResponse> users = userService.searchUsers(searchTerm, pageable);
+    public ResponseEntity<Page<UserResponse>> searchUsers(@RequestParam String searchTerm,
+                                                          Pageable pageable,
+                                                          @AuthenticationPrincipal User currentUser) {
+        Page<UserResponse> users = userService.searchUsers(searchTerm, pageable,currentUser);
         return ResponseEntity.ok(users);
     }
     @GetMapping("/me")
@@ -88,8 +90,9 @@ public class UserController {
     @GetMapping("/filter")
     public ResponseEntity<Page<UserResponse>> filterUsers(@RequestParam(required = false) UserRole role,
                                                           @RequestParam(required = false ) Boolean isActive,
-                                                          Pageable pageable) {
-        Page<UserResponse> users = userService.filterUsers(role, isActive, pageable);
+                                                          Pageable pageable,
+                                                          @AuthenticationPrincipal User currentUser) {
+        Page<UserResponse> users = userService.filterUsers(role, isActive, pageable,currentUser);
         return  ResponseEntity.ok(users);
     }
 
@@ -115,14 +118,17 @@ public class UserController {
 
 
     @GetMapping("/active")
-    public ResponseEntity<Page<UserResponse>> getActiveUsers(Pageable pageable){
-        return  ResponseEntity.ok(userService.getActiveUsers(pageable));
+    public ResponseEntity<Page<UserResponse>> getActiveUsers(Pageable pageable,
+                                                             @AuthenticationPrincipal User currentUser) {
+        return  ResponseEntity.ok(userService.getActiveUsers(pageable,currentUser));
     }
 
 
     @GetMapping("/role/{role}")
-    public ResponseEntity<Page<UserResponse>> getUsersByRole (@PathVariable UserRole role, Pageable pageable) {
-        Page<UserResponse> users = userService.getUsersByRole(role, pageable);
+    public ResponseEntity<Page<UserResponse>> getUsersByRole (@PathVariable UserRole role,
+                                                              Pageable pageable,
+                                                              @AuthenticationPrincipal User currentUser) {
+        Page<UserResponse> users = userService.getUsersByRole(role, pageable, currentUser);
         return ResponseEntity.ok(users);
     }
 

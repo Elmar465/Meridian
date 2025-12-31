@@ -42,10 +42,12 @@ public class IssueService {
         activityLogService.logSimpleActivity(savedIssue.getId(), userId, "updateIssuePriority");
         return convertToResponse(savedIssue);
     }
-    public Page<IssueResponse> getAllIssues(Long organizationId, Pageable pageable) {
-        Page<Issue> issues = issueRepository.findByOrganizationId(organizationId, pageable);
+    public Page<IssueResponse> getAllIssues(Pageable pageable, User currentUser) {
+        Long orgId = currentUser.getOrganization().getId();
+        Page<Issue> issues = issueRepository.findByOrganizationId(orgId, pageable);
         return issues.map(this::convertToResponse);
     }
+
     @Transactional
     public IssueResponse updateIssueStatus(Long issueId, IssueStatus issueStatus, Long userId) {
         Issue issue = issueRepository.findById(issueId).orElseThrow(()
@@ -140,14 +142,21 @@ public class IssueService {
                                                 IssueType type,
                                                 Long assigneeId,
                                                 Long reporterId,
-                                                Pageable pageable) {
-        Page<Issue> issues =  issueRepository.filterIssues(projectId,
-                status, priority,type,assigneeId,reporterId,pageable);
+                                                Pageable pageable,
+                                                User currentUser) {
+      Long orgId = currentUser.getOrganization().getId();
+      Page<Issue> issues =  issueRepository.filterIssuesByOrganization(orgId, projectId, status,
+                priority,
+                type,
+                assigneeId,
+                reporterId,
+                pageable);
         return issues.map(this::convertToResponse);
     }
 
-    public Page<IssueResponse> searchIssues(String searchTerm, Pageable pageable) {
-        Page<Issue> issues=  issueRepository.searchIssues(searchTerm, pageable);
+    public Page<IssueResponse> searchIssues(String searchTerm, Pageable pageable, User currentUser) {
+        Long orgId = currentUser.getOrganization().getId();
+        Page<Issue> issues = issueRepository.searchIssuesByOrganization(orgId, searchTerm, pageable);
         return issues.map(this::convertToResponse);
     }
 
@@ -166,10 +175,10 @@ public class IssueService {
         return issuePage.map(this::convertToResponse);
     }
 
-    public Page<IssueResponse> getAllIssues(Pageable pageable) {
-        Page<Issue> issues = issueRepository.findAll(pageable);
-        return  issues.map(this::convertToResponse);
-    }
+//    public Page<IssueResponse> getAllIssues(Pageable pageable) {
+//        Page<Issue> issues = issueRepository.findAll(pageable);
+//        return  issues.map(this::convertToResponse);
+//    }
 
     private Integer generateIssueNumber(Long projectId) {
         Optional<Issue> lastIssue = issueRepository.findTopByProjectIdOrderByIssueNumberDesc(projectId);

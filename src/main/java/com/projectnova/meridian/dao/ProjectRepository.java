@@ -49,4 +49,22 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
     Long countByOrganizationId(Long orgId);
     Boolean existsByKeyAndOrganizationId(String key, Long orgId);
 
+
+    // 1. searchProjectsByOrganization
+    @Query("SELECT p FROM Project p WHERE p.organization.id = :orgId AND (" +
+            "LOWER(p.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(p.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+    Page<Project> searchProjectsByOrganization(@Param("orgId") Long orgId,
+                                               @Param("searchTerm") String searchTerm,
+                                               Pageable pageable);
+
+
+    // 2. filterProjectsByOrganization
+    @Query("SELECT p FROM Project p WHERE p.organization.id = :orgId AND " +
+            "(:status IS NULL OR p.status = :status) AND " +
+            "(:ownerId IS NULL OR p.owner.id = :ownerId)")
+    Page<Project> filterProjectsByOrganization(@Param("orgId") Long orgId,
+                                               @Param("status") ProjectStatus status,
+                                               @Param("ownerId") Long ownerId,
+                                               Pageable pageable);
 }

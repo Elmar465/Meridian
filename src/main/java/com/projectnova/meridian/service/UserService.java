@@ -81,13 +81,15 @@ public class UserService {
         return users.map(this::convertToUserResponse);
     }
 
-    public Page<UserResponse> getActiveUsers(Pageable pageable) {
-        Page<User> users = userRepository.findByIsActive(true,  pageable);
+    public Page<UserResponse> getActiveUsers(Pageable pageable, User currentUser) {
+        Long  orgId = currentUser.getOrganization().getId();
+        Page<User> users = userRepository.findByOrganizationIdAndIsActive(orgId, true, pageable);
         return users.map(this::convertToUserResponse);
     }
 
-    public Page<UserResponse> getUsersByRole(UserRole role, Pageable pageable) {
-        Page<User> users = userRepository.findByRole(role,  pageable);
+    public Page<UserResponse> getUsersByRole(UserRole role, Pageable pageable, User currentUser) {
+        Long orgId = currentUser.getOrganization().getId();
+        Page<User> users = userRepository.findByOrganizationIdAndRole(orgId, role, pageable);
         return users.map(this::convertToUserResponse);
     }
 
@@ -121,14 +123,18 @@ public class UserService {
 
 
 
-    public Page<UserResponse> searchUsers(String searchTerm, Pageable pageable) {
-        Page<User> users = userRepository.searchUsers(searchTerm, pageable);
+    public Page<UserResponse> searchUsers(String searchTerm, Pageable pageable, User currentUser) {
+
+
+        Long orgId = currentUser.getOrganization().getId();
+        Page<User> users   =    userRepository.searchUsersByOrganization(orgId, searchTerm, pageable);
         return users.map(this::convertToUserResponse);
     }
 
 
-    public Page<UserResponse> filterUsers(UserRole role,  Boolean isActive, Pageable  pageable) {
-        Page<User> users = userRepository.filterUsers(role, isActive, pageable);
+    public Page<UserResponse> filterUsers(UserRole role,  Boolean isActive, Pageable  pageable, User currentUser) {
+        Long orgId = currentUser.getOrganization().getId();
+        Page<User> users =  userRepository.filterUsersByOrganization(orgId, role, isActive, pageable);
         return users.map(this::convertToUserResponse);
     }
 

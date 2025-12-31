@@ -8,6 +8,7 @@ import com.projectnova.meridian.dto.UpdateIssueRequest;
 import com.projectnova.meridian.model.IssueStatus;
 import com.projectnova.meridian.model.IssueType;
 import com.projectnova.meridian.model.Priority;
+import com.projectnova.meridian.model.User;
 import com.projectnova.meridian.service.EmailService;
 import com.projectnova.meridian.service.IssueService;
 import com.projectnova.meridian.utils.UserContext;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -40,9 +42,9 @@ public class IssueController {
     }
 
     @GetMapping()
-    public ResponseEntity<Page<IssueResponse>> getAllIssues(Pageable pageable) {
-        Long orgId = userContext.getCurrentUser().getOrganization().getId();
-        return ResponseEntity.ok(issueService.getAllIssues(orgId, pageable));
+    public ResponseEntity<Page<IssueResponse>> getAllIssues(Pageable pageable,
+                                                            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(issueService.getAllIssues(pageable, currentUser));
     }
 
 
@@ -142,21 +144,24 @@ public class IssueController {
 
 
     @GetMapping("/search")
-    public ResponseEntity<Page<IssueResponse>> searchIssues(@RequestParam String query, Pageable pageable){
-        Page<IssueResponse> issueResponseList = issueService.searchIssues(query, pageable);
+    public ResponseEntity<Page<IssueResponse>> searchIssues(@RequestParam String query,
+                                                            Pageable pageable,
+                                                            @AuthenticationPrincipal User currentUser){
+        Page<IssueResponse> issueResponseList = issueService.searchIssues(query, pageable, currentUser);
         return ResponseEntity.ok(issueResponseList);
     }
 
     @GetMapping("/filter")
-    public ResponseEntity<Page<IssueResponse>> filterIssues( @RequestParam(required = false) Long projectId,
-                                                             @RequestParam(required = false) IssueStatus status,
-                                                             @RequestParam(required = false) Priority priority,
-                                                             @RequestParam(required = false) IssueType type,
-                                                             @RequestParam(required = false) Long assigneeId,
-                                                             @RequestParam(required = false) Long reporterId,
-                                                             Pageable pageable){
+    public ResponseEntity<Page<IssueResponse>> filterIssues(@RequestParam(required = false) Long projectId,
+                                                            @RequestParam(required = false) IssueStatus status,
+                                                            @RequestParam(required = false) Priority priority,
+                                                            @RequestParam(required = false) IssueType type,
+                                                            @RequestParam(required = false) Long assigneeId,
+                                                            @RequestParam(required = false) Long reporterId,
+                                                            Pageable pageable,
+                                                            @AuthenticationPrincipal User currentUser){
         return ResponseEntity.ok(issueService.filterIssues(
-                projectId, status, priority, type, assigneeId, reporterId, pageable
+                projectId, status, priority, type, assigneeId, reporterId, pageable, currentUser
         ));
     }
 

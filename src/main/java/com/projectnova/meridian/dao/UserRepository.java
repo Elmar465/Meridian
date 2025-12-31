@@ -57,4 +57,28 @@ public interface UserRepository extends JpaRepository<User,Long> {
     Page<User> filterUsers(@Param("role") UserRole role ,
                            @Param("isActive") Boolean isActive,
                            Pageable pageable);
+
+    // 1. searchUsersByOrganization
+    @Query("SELECT u FROM User u WHERE u.organization.id = :orgId AND (" +
+            "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(u.email) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(u.username) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+    Page<User> searchUsersByOrganization(@Param("orgId") Long orgId,
+                                         @Param("searchTerm") String searchTerm,
+                                         Pageable pageable);
+
+
+    // 2. filterUsersByOrganization
+    @Query("SELECT u FROM User u WHERE u.organization.id = :orgId AND " +
+            "(:role IS NULL OR u.role = :role) AND " +
+            "(:isActive IS NULL OR u.isActive = :isActive)")
+    Page<User> filterUsersByOrganization(@Param("orgId") Long orgId,
+                                         @Param("role") UserRole role,
+                                         @Param("isActive") Boolean isActive,
+                                         Pageable pageable);
+
+
+    // 3. findByOrganizationIdAndIsActive (no @Query needed - Spring generates it)
+    Page<User> findByOrganizationIdAndIsActive(Long orgId, Boolean isActive, Pageable pageable);
 }

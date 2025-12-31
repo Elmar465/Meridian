@@ -29,6 +29,8 @@ public class ProjectService {
     private final UserRepository  userRepository;
     private final EmailService emailService;
     private final OrganizationRepository organizationRepository;
+    private final OrganizationService organizationService;
+
 
     private ProjectResponse convertToResponse(Project project) {
         ProjectResponse projectResponse = new ProjectResponse();
@@ -175,14 +177,18 @@ public class ProjectService {
     }
 
 
-    public Page<ProjectResponse> searchProjects(String searchTerm, Pageable pageable) {
-        Page<Project> project = projectRepository.searchProjects(searchTerm, pageable);
+    public Page<ProjectResponse> searchProjects(String searchTerm, Pageable pageable, User currentUser) {
+        Long orgId = currentUser.getOrganization().getId();
+        Page<Project> project =  projectRepository.searchProjectsByOrganization(orgId, searchTerm, pageable);
         return project.map(this::convertToResponse);
     }
 
 
-    public Page<ProjectResponse>  filterProjects(ProjectStatus projectStatus, Long ownerId,  Pageable pageable) {
-        Page<Project> projects = projectRepository.filterProjects(projectStatus, ownerId, pageable);
+    public Page<ProjectResponse>  filterProjects(ProjectStatus projectStatus, Long ownerId,
+                                                 Pageable pageable,
+                                                 User currentUser) {
+        Long orgId = currentUser.getOrganization().getId();
+        Page<Project> projects  =  projectRepository.filterProjectsByOrganization(orgId,projectStatus, ownerId, pageable);
         return projects.map(this::convertToResponse);
     }
 
@@ -212,21 +218,42 @@ public class ProjectService {
 
     }
 
-    public List<ProjectMemberResponse> getProjectMembers(Long projectId) {
+    public List<ProjectMemberResponse> getProjectMembers(Long projectId, User currentUser)
+            throws AccessDeniedException {
+
+        Project project = projectRepository.findById(projectId).orElseThrow(()
+                -> new ResourceNotFoundException("Project  not found" + projectId));
+        Long orgId = currentUser.getOrganization().getId();
+        if(!orgId.equals(project.getOrganization().getId())) {
+            throw new AccessDeniedException("Access Denied");
+        }
         return convertMembersToResponseList(projectMemberRepository.findByProjectId(projectId));
     }
 
     @Transactional
-    public ProjectMemberResponse addMember(Long projectId, AddMemberRequest request) {
+    public ProjectMemberResponse addMember(Long projectId, AddMemberRequest request, User currentUser)
+            throws AccessDeniedException {
+
         Project existingProject = projectRepository.findById(projectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Project  not found" + projectId));
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found" + projectId));
 
         User existingUser = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found" + request.getUserId()));
 
+        Long orgId = currentUser.getOrganization().getId();
 
-        if(projectMemberRepository.existsByProjectIdAndUserId(projectId, request.getUserId())) {
-            throw  new DuplicateResourceException("Project member already exists");
+        // Validate project belongs to current user's org
+        if (!orgId.equals(existingProject.getOrganization().getId())) {
+            throw new AccessDeniedException("Access denied - project not in your organization");
+        }
+
+        // Validate user being added is in same org
+        if (!orgId.equals(existingUser.getOrganization().getId())) {
+            throw new AccessDeniedException("Cannot add user from different organization");
+        }
+
+        if (projectMemberRepository.existsByProjectIdAndUserId(projectId, request.getUserId())) {
+            throw new DuplicateResourceException("Project member already exists");
         }
 
         ProjectMember member = new ProjectMember();
@@ -235,17 +262,23 @@ public class ProjectService {
         member.setRole(request.getRole() != null ? request.getRole() : ProjectMemberRole.MEMBER);
 
         ProjectMember savedMember = projectMemberRepository.save(member);
-        emailService.sendProjectMemberAddedEmail(existingProject,existingUser);
+        emailService.sendProjectMemberAddedEmail(existingProject, existingUser);
         return convertMemberToResponse(savedMember);
     }
 
 
 
-
     @Transactional
-    public void removeMember(Long projectId, Long userId) {
+    public void removeMember(Long projectId, Long userId, User currentUser)
+            throws AccessDeniedException {
         if(!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
             throw  new ResourceNotFoundException("Project member not found");
+        }
+       Project project = projectRepository.findById(projectId).orElseThrow(()
+               -> new ResourceNotFoundException("Project not found" + projectId));
+        Long orgId = currentUser.getOrganization().getId();
+        if(!orgId.equals(project.getOrganization().getId())) {
+            throw new AccessDeniedException("Access denied - project not in your organization");
         }
         projectMemberRepository.deleteByProjectIdAndUserId(projectId, userId);
     }

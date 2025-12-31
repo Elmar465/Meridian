@@ -32,23 +32,30 @@ private final UserContext userContext;
 
     @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     @DeleteMapping("/{projectId}/members/{userId}")
-    public ResponseEntity<Void> deleteMember(@PathVariable Long projectId, @PathVariable Long userId) {
-        projectService.removeMember(projectId, userId);
+    public ResponseEntity<Void> deleteMember(@PathVariable Long projectId,
+                                             @PathVariable Long userId,
+                                             @AuthenticationPrincipal User currentUser) throws AccessDeniedException {
+        projectService.removeMember(projectId, userId, currentUser);
         return ResponseEntity.noContent().build();
     }
 
 
 
     @GetMapping("/{projectId}/members")
-    public ResponseEntity<List<ProjectMemberResponse>> getProjectMembers(@PathVariable Long projectId) {
-        List<ProjectMemberResponse> projectMemberResponse  = projectService.getProjectMembers(projectId);
+    public ResponseEntity<List<ProjectMemberResponse>> getProjectMembers(@PathVariable Long projectId,
+                                                                         @AuthenticationPrincipal User currentUser)
+            throws AccessDeniedException {
+        List<ProjectMemberResponse> projectMemberResponse  = projectService.getProjectMembers(projectId, currentUser);
         return ResponseEntity.ok(projectMemberResponse);
     }
 
 
     @PostMapping("/{projectId}/members")
-    public ResponseEntity<ProjectMemberResponse>  addMember(@PathVariable Long projectId, @RequestBody AddMemberRequest request ){
-        ProjectMemberResponse projectResponse = projectService.addMember(projectId, request);
+    public ResponseEntity<ProjectMemberResponse>  addMember(@PathVariable Long projectId,
+                                                            @RequestBody AddMemberRequest request,
+                                                            @AuthenticationPrincipal User currentUser)
+            throws AccessDeniedException {
+        ProjectMemberResponse projectResponse = projectService.addMember(projectId, request, currentUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(projectResponse);
     }
 
@@ -71,8 +78,9 @@ private final UserContext userContext;
 
     @GetMapping("/search")
     public ResponseEntity<Page<ProjectResponse>> searchProjects(@RequestParam String searchTerm,
-                                                                Pageable pageable) {
-        Page<ProjectResponse> projectResponseList = projectService.searchProjects(searchTerm, pageable);
+                                                                Pageable pageable,
+                                                                @AuthenticationPrincipal User currentUser) {
+        Page<ProjectResponse> projectResponseList = projectService.searchProjects(searchTerm, pageable, currentUser);
         return ResponseEntity.ok(projectResponseList);
 
     }
@@ -81,9 +89,10 @@ private final UserContext userContext;
     public ResponseEntity<Page<ProjectResponse>> filteProject(
             @RequestParam(required = false) ProjectStatus status,
             @RequestParam(required = false) Long ownerId,
-            Pageable pageable
+            Pageable pageable,
+            @AuthenticationPrincipal User currentUser
     ) {
-        Page<ProjectResponse> filter = projectService.filterProjects(status, ownerId, pageable);
+        Page<ProjectResponse> filter = projectService.filterProjects(status, ownerId, pageable, currentUser);
         return ResponseEntity.ok(filter);
     }
 

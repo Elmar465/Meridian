@@ -68,4 +68,27 @@ public interface IssueRepository extends JpaRepository<Issue,Long> {
 
     @Query("SELECT i FROM Issue i WHERE i.project.organization.id = :orgId")
     Page<Issue> findByOrganizationId(@Param("orgId") Long orgId, Pageable pageable);
+
+    @Query("SELECT i FROM Issue i WHERE i.project.organization.id = :orgId AND (" +
+            "LOWER(i.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+            "LOWER(i.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+    Page<Issue> searchIssuesByOrganization(@Param("orgId") Long orgId,
+                                           @Param("searchTerm") String searchTerm,
+                                           Pageable pageable);
+
+    @Query("SELECT i FROM Issue i WHERE i.project.organization.id = :orgId AND " +
+            "(:projectId IS NULL OR i.project.id = :projectId) AND " +
+            "(:status IS NULL OR i.status = :status) AND " +
+            "(:priority IS NULL OR i.priority = :priority) AND " +
+            "(:type IS NULL OR i.type = :type) AND " +
+            "(:assigneeId IS NULL OR i.assignee.id = :assigneeId) AND " +
+            "(:reporterId IS NULL OR i.reporter.id = :reporterId)")
+    Page<Issue> filterIssuesByOrganization(@Param("orgId") Long orgId,
+                                           @Param("projectId") Long projectId,
+                                           @Param("status") IssueStatus status,
+                                           @Param("priority") Priority priority,
+                                           @Param("type") IssueType type,
+                                           @Param("assigneeId") Long assigneeId,
+                                           @Param("reporterId") Long reporterId,
+                                           Pageable pageable);
 }
