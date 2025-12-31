@@ -65,4 +65,7 @@ public interface IssueRepository extends JpaRepository<Issue,Long> {
             @Param("reporterId") Long reporterId,
             Pageable pageable
     );
+
+    @Query("SELECT i FROM Issue i WHERE i.project.organization.id = :orgId")
+    Page<Issue> findByOrganizationId(@Param("orgId") Long orgId, Pageable pageable);
 }

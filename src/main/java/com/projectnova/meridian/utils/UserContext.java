@@ -11,14 +11,21 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class UserContext {
 
+
     private final UserRepository userRepository;
 
-
     public Long getCurrentUserId() {
+        return getCurrentUser().getId();
+    }
+
+    public User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
-        User user = userRepository.findByUsername(username).orElseThrow(()
-                ->new RuntimeException("User not found"));
-        return user.getId();
+        return userRepository.findByUsername(username).orElseThrow(()
+                -> new RuntimeException("User not found"));
+    }
+
+    public Long getCurrentOrganizationId() {
+        return getCurrentUser().getOrganization().getId();
     }
 }

@@ -34,9 +34,15 @@ public class IssueController {
     public ResponseEntity<IssueResponse> updateIssuePriority(@PathVariable Long id,
                                                              @RequestParam Priority priority
                                                              ){
-        Long userId = userContext.getCurrentUserId();
+        Long userId = userContext.getCurrentUser().getId();
         IssueResponse issueResponse = issueService.updateIssuePriority(id, priority, userId);
         return ResponseEntity.status(HttpStatus.OK).body(issueResponse);
+    }
+
+    @GetMapping()
+    public ResponseEntity<Page<IssueResponse>> getAllIssues(Pageable pageable) {
+        Long orgId = userContext.getCurrentUser().getOrganization().getId();
+        return ResponseEntity.ok(issueService.getAllIssues(orgId, pageable));
     }
 
 
@@ -154,8 +160,8 @@ public class IssueController {
         ));
     }
 
-    @GetMapping()
-    public ResponseEntity<Page<IssueResponse>> getAllIssues(Pageable pageable) {
-        return ResponseEntity.ok(issueService.getAllIssues(pageable));
-    }
+//    @GetMapping()
+//    public ResponseEntity<Page<IssueResponse>> getAllIssues(Pageable pageable) {
+//        return ResponseEntity.ok(issueService.getAllIssues(pageable));
+//    }
 }

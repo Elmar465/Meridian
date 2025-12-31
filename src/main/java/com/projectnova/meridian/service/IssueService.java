@@ -42,7 +42,10 @@ public class IssueService {
         activityLogService.logSimpleActivity(savedIssue.getId(), userId, "updateIssuePriority");
         return convertToResponse(savedIssue);
     }
-
+    public Page<IssueResponse> getAllIssues(Long organizationId, Pageable pageable) {
+        Page<Issue> issues = issueRepository.findByOrganizationId(organizationId, pageable);
+        return issues.map(this::convertToResponse);
+    }
     @Transactional
     public IssueResponse updateIssueStatus(Long issueId, IssueStatus issueStatus, Long userId) {
         Issue issue = issueRepository.findById(issueId).orElseThrow(()
