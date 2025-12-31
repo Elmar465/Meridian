@@ -44,4 +44,9 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
             Pageable pageable
     );
 
+    Page<Project> findByOrganizationId(Long orgId, Pageable pageable);
+    Page<Project> findByOrganizationIdAndStatus(Long orgId, ProjectStatus status, Pageable pageable);
+    Long countByOrganizationId(Long orgId);
+    Boolean existsByKeyAndOrganizationId(String key, Long orgId);
+
 }

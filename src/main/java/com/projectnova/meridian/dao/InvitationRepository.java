@@ -22,4 +22,9 @@ public interface InvitationRepository extends JpaRepository<Invitation, Long> {
     Page<Invitation> findAll(Pageable pageable);
     List<Invitation> findAllByExpiresAtBeforeAndStatus(LocalDateTime dateTime, InvitationStatus status);
     boolean existsByEmailAndStatus(String email, InvitationStatus status);
+    Page<Invitation> findByOrganizationId(Long orgId, Pageable pageable);
+    Page<Invitation> findByOrganizationIdAndStatus(Long orgId, InvitationStatus status, Pageable pageable);
+    Optional<Invitation> findByEmailAndOrganizationIdAndStatus(String email, Long orgId, InvitationStatus status);
+    Boolean existsByEmailAndOrganizationIdAndStatus(String email, Long orgId, InvitationStatus status);
+    Long countByOrganizationIdAndStatus(Long organizationId, InvitationStatus status);
 }

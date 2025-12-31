@@ -37,7 +37,10 @@ public interface UserRepository extends JpaRepository<User,Long> {
     Page<User> findByIsActive(Boolean isActive, Pageable pageable);
     Page<User> findByRole(UserRole role, Pageable pageable);
 
-
+    Page<User> findByOrganizationId(Long orgId, Pageable pageable);
+    Page<User> findByOrganizationIdAndRole(Long orgId, UserRole role, Pageable pageable);
+    Long countByOrganizationId(Long orgId);
+    Boolean existsByEmailAndOrganizationId(String email, Long orgId);
 
     @Query("SELECT u FROM User  u WHERE " +
             "LOWER(u.firstName)  LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +

@@ -23,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 import java.util.Map;
 
@@ -49,8 +50,9 @@ public class UserController {
 
     @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser (@PathVariable Long id) {
-        userService.deleteUser(id);
+    public ResponseEntity<Void> deleteUser (@PathVariable Long id, @AuthenticationPrincipal User currentUser)
+            throws AccessDeniedException {
+        userService.deleteUser(id, currentUser);
         return ResponseEntity.noContent().build();
     }
 
@@ -66,14 +68,9 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @RequestBody @Valid UpdateUserRequest request){
-        Long userId = userContext.getCurrentUserId();
-        User currentUser =userRepository.findById(userId).orElseThrow(()
-                -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        if(!id.equals(userId) && !currentUser.getRole().equals(UserRole.ADMIN)) {
-            throw new RuntimeException("You can only update your own account unless you are an admin");
-        }
-        UserResponse userResponse = userService.updateUser(id, request);
+    public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @RequestBody @Valid UpdateUserRequest request,
+                                                   @AuthenticationPrincipal User currentUser) throws AccessDeniedException {
+        UserResponse userResponse = userService.updateUser(id, request , currentUser);
         return new  ResponseEntity<>(userResponse, HttpStatus.OK);
     }
 
@@ -83,9 +80,9 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
     @GetMapping("/me")
-    public ResponseEntity<UserResponse> getCurrentUser() {
-        Long userId = userContext.getCurrentUserId();
-        UserResponse user = userService.getUserById(userId);
+    public ResponseEntity<UserResponse> getCurrentUser(@AuthenticationPrincipal User currentUser)
+            throws AccessDeniedException {
+        UserResponse user = userService.getUserById(currentUser.getId(), currentUser);
         return ResponseEntity.ok(user);
     }
     @GetMapping("/filter")
@@ -144,8 +141,8 @@ public class UserController {
 
     @GetMapping()
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'MEMBER')")
-    ResponseEntity<Page<UserResponse>> getAllUsers(Pageable pageable) {
-        return ResponseEntity.ok(userService.getAllUsers(pageable));
+    ResponseEntity<Page<UserResponse>> getAllUsers(Pageable pageable, @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(userService.getAllUsers(currentUser, pageable));
     }
 
     @GetMapping("/list")
@@ -155,8 +152,9 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
-        UserResponse user = userService.getUserById(id);
+    ResponseEntity<UserResponse> getUserById(@PathVariable Long id, @AuthenticationPrincipal User currentUser)
+            throws AccessDeniedException {
+        UserResponse user = userService.getUserById(id, currentUser);
         return ResponseEntity.ok(user);
     }
 }

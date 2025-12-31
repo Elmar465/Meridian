@@ -4,6 +4,7 @@ package com.projectnova.meridian.controller;
 import com.projectnova.meridian.dto.*;
 import com.projectnova.meridian.model.Project;
 import com.projectnova.meridian.model.ProjectStatus;
+import com.projectnova.meridian.model.User;
 import com.projectnova.meridian.service.ProjectService;
 import com.projectnova.meridian.utils.UserContext;
 import jakarta.validation.Valid;
@@ -13,8 +14,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 
 @RestController
@@ -52,16 +55,17 @@ private final UserContext userContext;
 
     @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     @DeleteMapping("/{projectId}")
-    public ResponseEntity<Void> deleteProject(@PathVariable Long projectId) {
-        projectService.deleteProject(projectId);
+    public ResponseEntity<Void> deleteProject(@PathVariable Long projectId, @AuthenticationPrincipal User currentUser )
+            throws AccessDeniedException {
+        projectService.deleteProject(projectId, currentUser);
         return ResponseEntity.noContent().build();
     }
 
 
     @PutMapping("/{id}")
     public ResponseEntity<ProjectResponse> updateProject(@PathVariable Long id, @RequestBody
-    @Valid UpdateProjectRequest request){
-        ProjectResponse update = projectService.updateProject(id, request);
+    @Valid UpdateProjectRequest request, @AuthenticationPrincipal User currentUser ) throws AccessDeniedException {
+        ProjectResponse update = projectService.updateProject(id, request, currentUser);
         return new  ResponseEntity<>(update, HttpStatus.OK);
     }
 
@@ -84,9 +88,9 @@ private final UserContext userContext;
     }
 
     @PostMapping()
-    public ResponseEntity<ProjectResponse> createProject(@RequestBody @Valid CreateProjectRequest request) {
-        Long userId = userContext.getCurrentUserId();
-        ProjectResponse projectResponse = projectService.createProject(request, userId);
+    public ResponseEntity<ProjectResponse> createProject(@RequestBody @Valid CreateProjectRequest request,
+                                                         @AuthenticationPrincipal User currentUser) throws AccessDeniedException {
+        ProjectResponse projectResponse = projectService.createProject(request,currentUser);
         return new  ResponseEntity<>(projectResponse, HttpStatus.CREATED);
     }
 
@@ -106,13 +110,16 @@ private final UserContext userContext;
     }
 
     @GetMapping
-    public ResponseEntity<Page<ProjectResponse>> getAllProjects(Pageable pageable) {
-        return ResponseEntity.ok(projectService.getAllProjects(pageable));
+    public ResponseEntity<Page<ProjectResponse>> getAllProjects(Pageable pageable,
+                                                                @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(projectService.getAllProjects(pageable,currentUser));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProjectDetailResponse> getProjectById(@PathVariable Long id) {
-        ProjectDetailResponse projectResponse = projectService.getProjectById(id);
+    public ResponseEntity<ProjectDetailResponse> getProjectById(@PathVariable Long id,
+                                                                @AuthenticationPrincipal User currentUser)
+            throws AccessDeniedException {
+        ProjectDetailResponse projectResponse = projectService.getProjectById(id, currentUser);
         return ResponseEntity.ok(projectResponse);
     }
 

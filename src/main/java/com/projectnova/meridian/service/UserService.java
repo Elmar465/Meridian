@@ -1,14 +1,13 @@
 package com.projectnova.meridian.service;
 
 
+import com.projectnova.meridian.dao.OrganizationRepository;
 import com.projectnova.meridian.dao.UserRepository;
-import com.projectnova.meridian.dto.ChangePasswordRequest;
-import com.projectnova.meridian.dto.CreateUserRequest;
-import com.projectnova.meridian.dto.UpdateUserRequest;
-import com.projectnova.meridian.dto.UserResponse;
+import com.projectnova.meridian.dto.*;
 import com.projectnova.meridian.exceptions.BadRequestException;
 import com.projectnova.meridian.exceptions.DuplicateResourceException;
 import com.projectnova.meridian.exceptions.ResourceNotFoundException;
+import com.projectnova.meridian.model.Organization;
 import com.projectnova.meridian.model.User;
 import com.projectnova.meridian.model.UserRole;
 import jakarta.transaction.Transactional;
@@ -21,10 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -40,6 +36,7 @@ public class UserService {
     private static final List<String> ALLOWED_FILE_TYPES = List.of(
             "image/jpeg", "image/png", "image/gif", "image/webp"
     );
+    private final OrganizationRepository organizationRepository;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -77,55 +74,61 @@ public class UserService {
         userRepository.save(currentUser);
     }
 
-    public Page<UserResponse> getAllUsers(Pageable pageable) {
-        Page<User> users = userRepository.findAll(pageable);
-        return users.map(this::convertToResponse);
+    public Page<UserResponse> getAllUsers(User currentUser,Pageable pageable) {
+        Long  orgId = currentUser.getOrganization().getId();
+        Page<User> users = userRepository.findByOrganizationId(orgId,pageable);
+        return users.map(this::convertToUserResponse);
     }
 
     public Page<UserResponse> getActiveUsers(Pageable pageable) {
         Page<User> users = userRepository.findByIsActive(true,  pageable);
-        return users.map(this::convertToResponse);
+        return users.map(this::convertToUserResponse);
     }
 
     public Page<UserResponse> getUsersByRole(UserRole role, Pageable pageable) {
         Page<User> users = userRepository.findByRole(role,  pageable);
-        return users.map(this::convertToResponse);
+        return users.map(this::convertToUserResponse);
     }
 
     @Transactional
-    public void deleteUser(Long id) {
+    public void deleteUser(Long id, User currentUser) throws AccessDeniedException {
+        Long orgId = currentUser.getOrganization().getId();
+
         User existingUser = userRepository.findById(id).
                 orElseThrow(() -> new ResourceNotFoundException("User not found" + id));
+        if(!orgId.equals(existingUser.getOrganization().getId())) {
+            throw new AccessDeniedException("Access Denied");
+        }
         userRepository.delete(existingUser);
     }
 
 
     @Transactional
-    public UserResponse updateUser(Long id, UpdateUserRequest updateUserRequest) {
-        User existingUser =  userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found!"));
+    public UserResponse updateUser(Long userId, UpdateUserRequest request, User currentUser) throws AccessDeniedException {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id " + userId));
 
-        // Update the user with new values
-        User updateUser = updateEntity(existingUser, updateUserRequest);
+        Long orgId = currentUser.getOrganization().getId();
+        if(!orgId.equals(user.getOrganization().getId())) {
+            throw new AccessDeniedException("Access denied");
+        }
 
-        // Save the updated user
-        User savedUser = userRepository.save(updateUser);
-
-        // convert
-        return convertToResponse(savedUser);
+        updateEntity(user, request);
+        User savedUser = userRepository.save(user);
+        return convertToUserResponse(savedUser);
     }
 
 
 
     public Page<UserResponse> searchUsers(String searchTerm, Pageable pageable) {
         Page<User> users = userRepository.searchUsers(searchTerm, pageable);
-        return users.map(this::convertToResponse);
+        return users.map(this::convertToUserResponse);
     }
 
 
     public Page<UserResponse> filterUsers(UserRole role,  Boolean isActive, Pageable  pageable) {
         Page<User> users = userRepository.filterUsers(role, isActive, pageable);
-        return users.map(this::convertToResponse);
+        return users.map(this::convertToUserResponse);
     }
 
 
@@ -137,7 +140,7 @@ public class UserService {
         user.setRole(newRole);
         userRepository.save(user);
 
-        return convertToResponse(user);
+        return convertToUserResponse(user);
     }
 
     @Transactional
@@ -153,35 +156,76 @@ public class UserService {
         long userCounbt = userRepository.count();
         UserRole assignRole = (userCounbt == 0) ? UserRole.ADMIN : UserRole.MEMBER;
 
-
+       String orgName  = generateOrganizationName(createUserRequest.getFirstName());
+       String baseSlug = generateSlug(orgName);
+       String uniqueSlug = generateUniqueSlug(baseSlug);
 
         //Convert Dto -> Entity
         User user = convertToEntity(createUserRequest);
         user.setRole(assignRole);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         User savedUser = userRepository.save(user);
-
-        return convertToResponse(savedUser);
+        Organization  org =  new Organization();
+        org.setName(orgName);
+        org.setSlug(uniqueSlug);
+        org.setOwner(savedUser);
+        org.setStatus(OrganizationStatus.ACTIVE);
+        Organization savedOrg = organizationRepository.save(org);
+        savedUser.setOrganization(savedOrg);
+        userRepository.save(savedUser);
+        return convertToUserResponse(savedUser);
     }
 
+
+    private String generateUniqueSlug(String baseSlug){
+        String slug = baseSlug;
+        int counter = 2;
+
+        while (organizationRepository.existsBySlug(slug)) {
+            slug = baseSlug + "-" + counter;
+            counter++;
+        }
+
+        return slug;
+    }
+
+    private String generateSlug(String name) {
+        if(name == null || name.isEmpty()) {
+            return "workspace";
+        }
+        return name.toLowerCase()
+                .replaceAll("[^a-z0-9\\s]", "")
+                .replace(" ", "-");
+    }
+
+    private String generateOrganizationName(String firstName) {
+       if(firstName == null || firstName.trim().isEmpty()){
+           return "My WorkSpace";
+       }
+       return firstName + "'s WorkSpace";
+    }
 
     public UserResponse getUserByEmail(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Email  not found" + email));
 
-        return convertToResponse(user);
+        return convertToUserResponse(user);
     }
 
     public UserResponse getUserByUsername(String username) {
         User user = userRepository.findByUsername(username).
             orElseThrow(() -> new ResourceNotFoundException("Username not found" + username));
-        return convertToResponse(user);
+        return convertToUserResponse(user);
     }
 
-    public UserResponse getUserById(Long id) {
+    public UserResponse getUserById(Long id, User currentUser) throws AccessDeniedException {
        User user = userRepository.findById(id).
                orElseThrow(()  -> new ResourceNotFoundException("User not found with id" + id));
-       return convertToResponse(user);
+       Long orgId = currentUser.getOrganization().getId();
+       if(!orgId.equals(user.getOrganization().getId())) {
+           throw new AccessDeniedException("Access Denied");
+       }
+       return convertToUserResponse(user);
     }
 
     public List<UserResponse> getActiveUsers() {
@@ -211,11 +255,11 @@ public class UserService {
 
     private List<UserResponse> convertToResponseList(List<User> users){
             return users.stream()
-                    .map(this::convertToResponse)
+                    .map(this::convertToUserResponse)
                     .collect(Collectors.toList());
     }
 
-    private UserResponse convertToResponse(User user) {
+    public UserResponse convertToUserResponse(User user) {
         UserResponse response = new UserResponse();
         response.setId(user.getId());
         response.setUsername(user.getUsername());
@@ -242,7 +286,7 @@ public class UserService {
         return user;
    }
 
-   private User updateEntity(User user, UpdateUserRequest  request) {
+   private User updateEntity(User user, UpdateUserRequest  request)  {
 
         if(request.getFirstName() != null) {
             user.setFirstName(request.getFirstName());

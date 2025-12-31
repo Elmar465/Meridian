@@ -4,5 +4,6 @@ public enum ProjectStatus {
 
     ACTIVE,
     ARCHIVED,
-    ON_HOLD
+    ON_HOLD,
+    COMPLETED
 }

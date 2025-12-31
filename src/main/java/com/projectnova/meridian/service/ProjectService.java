@@ -1,10 +1,7 @@
 package com.projectnova.meridian.service;
 
 
-import com.projectnova.meridian.dao.IssueRepository;
-import com.projectnova.meridian.dao.ProjectMemberRepository;
-import com.projectnova.meridian.dao.ProjectRepository;
-import com.projectnova.meridian.dao.UserRepository;
+import com.projectnova.meridian.dao.*;
 import com.projectnova.meridian.dto.*;
 import com.projectnova.meridian.exceptions.DuplicateResourceException;
 import com.projectnova.meridian.exceptions.ResourceNotFoundException;
@@ -15,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,7 +28,7 @@ public class ProjectService {
     private final IssueRepository  issueRepository;
     private final UserRepository  userRepository;
     private final EmailService emailService;
-
+    private final OrganizationRepository organizationRepository;
 
     private ProjectResponse convertToResponse(Project project) {
         ProjectResponse projectResponse = new ProjectResponse();
@@ -128,8 +127,9 @@ public class ProjectService {
         return projectRepository.existsByKey(key);
     }
 
-    public Page<ProjectResponse> getAllProjects(Pageable pageable) {
-        Page<Project> projects = projectRepository.findAll(pageable);
+    public Page<ProjectResponse> getAllProjects(Pageable pageable, User currentUser) {
+        Long  orgId = currentUser.getOrganization().getId();
+        Page<Project> projects = projectRepository.findByOrganizationId(orgId, pageable);
         return projects.map(this::convertToResponse);
     }
 
@@ -147,23 +147,31 @@ public class ProjectService {
                 new ResourceNotFoundException("Project not found" + key)));
     }
 
-    public ProjectDetailResponse  getProjectById(Long id) {
-        return convertToDetailResponse(projectRepository
-                .findById(id).orElseThrow(() -> new ResourceNotFoundException("Project id not found" + id)));
+    public ProjectDetailResponse  getProjectById(Long id, User  currentUser) throws AccessDeniedException {
+        Project project  = projectRepository.findById(id).orElseThrow(()
+                -> new ResourceNotFoundException("Project not found" + id));
+        Long orgId = currentUser.getOrganization().getId();
+        if(!orgId.equals(project.getOrganization().getId())) {
+            throw new AccessDeniedException("Access denied");
+        }
+        return convertToDetailResponse(project);
     }
 
     @Transactional
-    public ProjectResponse createProject(CreateProjectRequest createProjectRequest, Long ownerId) {
-        if(existsByKey(createProjectRequest.getKey())) {
-            throw  new DuplicateResourceException("Project key already exists");
+    public ProjectResponse createProject(CreateProjectRequest createProjectRequest, User currentUser) {
+        Long orgId  = currentUser.getOrganization().getId();
+        if(projectRepository.existsByKeyAndOrganizationId(createProjectRequest.getKey(), orgId)) {
+            throw new DuplicateResourceException("Project  already exists");
         }
-
-        User owner = userRepository.findById(ownerId).orElseThrow(()
-                -> new ResourceNotFoundException("Owner not found" + ownerId));
-
-        Project project = convertToEntity(createProjectRequest, owner);
-        Project savedProject = projectRepository.save(project);
-        return convertToResponse(savedProject);
+        Project project1 = new Project();
+        project1.setName(createProjectRequest.getName());
+        project1.setKey(createProjectRequest.getKey());
+        project1.setDescription(createProjectRequest.getDescription());
+        project1.setOwner(currentUser);
+        project1.setOrganization(currentUser.getOrganization());
+        project1.setStatus(ProjectStatus.ACTIVE);
+        Project project = projectRepository.save(project1);
+        return convertToResponse(project);
     }
 
 
@@ -179,20 +187,27 @@ public class ProjectService {
     }
 
     @Transactional
-    public ProjectResponse updateProject(Long id, UpdateProjectRequest updateProjectRequest) {
+    public ProjectResponse updateProject(Long id, UpdateProjectRequest updateProjectRequest,  User currentUser) throws AccessDeniedException {
         Project existingProject  =  projectRepository.findById(id).orElseThrow(()
                 -> new ResourceNotFoundException("Project  not found" + id));
 
+        Long orgId = currentUser.getOrganization().getId();
+        if(!orgId.equals(existingProject.getOrganization().getId())) {
+            throw new AccessDeniedException("Access Denied");
+        }
         Project updatedProject  = updateEntity(existingProject, updateProjectRequest);
-
         Project saveProject =  projectRepository.save(updatedProject);
         return convertToResponse(saveProject);
     }
 
     @Transactional
-    public void deleteProject(Long id) {
+    public void deleteProject(Long id, User currentUser) throws AccessDeniedException {
+        Long orgId = currentUser.getOrganization().getId();
        Project existingProject = projectRepository.findById(id).orElseThrow(()
                 -> new ResourceNotFoundException("Project  not found" + id));
+       if(!orgId.equals(existingProject.getOrganization().getId())) {
+           throw new AccessDeniedException("Access denied");
+       }
        projectRepository.delete(existingProject);
 
     }

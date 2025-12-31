@@ -37,8 +37,9 @@ public class InvitationController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Page<InvitationResponse>> getAllInvitations(Pageable pageable) {
-        Page<InvitationResponse> invitationResponses = invitationService.getAllInvitations(pageable);
+    public ResponseEntity<Page<InvitationResponse>> getAllInvitations(Pageable pageable,
+                                                                      @AuthenticationPrincipal User currentUser) {
+        Page<InvitationResponse> invitationResponses = invitationService.getAllInvitations(pageable,currentUser);
         return new  ResponseEntity<>(invitationResponses, HttpStatus.OK);
     }
 

@@ -2,10 +2,7 @@ package com.projectnova.meridian.service;
 
 import com.projectnova.meridian.dao.InvitationRepository;
 import com.projectnova.meridian.dao.UserRepository;
-import com.projectnova.meridian.dto.AcceptInvitationRequest;
-import com.projectnova.meridian.dto.CreateInvitationRequest;
-import com.projectnova.meridian.dto.InvitationResponse;
-import com.projectnova.meridian.dto.ValidateTokenResponse;
+import com.projectnova.meridian.dto.*;
 import com.projectnova.meridian.exceptions.DuplicateResourceException;
 import com.projectnova.meridian.exceptions.ResourceNotFoundException;
 import com.projectnova.meridian.model.Invitation;
@@ -57,8 +54,15 @@ public class InvitationService {
         log.info("Cleaned up {} expired invitations", expiredList.size());
     }
 
-    public Page<InvitationResponse> getAllInvitations(Pageable pageable) {
-        Page<Invitation> invitationPage = invitationRepository.findAll(pageable);
+    public Page<InvitationResponse> getPendingInvitations(Pageable pageable, User currentUser){
+        Long orgId = currentUser.getOrganization().getId();
+        Page<Invitation> invitationPage = invitationRepository.findByOrganizationIdAndStatus(orgId, InvitationStatus.PENDING, pageable);
+        return convertToResponsePage(invitationPage);
+    }
+
+    public Page<InvitationResponse> getAllInvitations(Pageable pageable, User currentUser) {
+        Long orgId = currentUser.getOrganization().getId();
+        Page<Invitation> invitationPage = invitationRepository.findByOrganizationId(orgId,pageable);
         return convertToResponsePage(invitationPage);
     }
 
@@ -76,6 +80,10 @@ public class InvitationService {
         }
 
         if(currentUser.getRole() != UserRole.ADMIN && !invitation.getInvitedBy().equals(currentUser)) {
+            throw new AccessDeniedException("You are not allowed to resend this invitation");
+        }
+        Long orgId = currentUser.getOrganization().getId();
+        if(!orgId.equals(invitation.getOrganization().getId())) {
             throw new AccessDeniedException("You are not allowed to resend this invitation");
         }
         invitation.setToken(UUID.randomUUID().toString());
@@ -99,7 +107,10 @@ public class InvitationService {
         if (currentUser.getRole() != UserRole.ADMIN && !invitation.getInvitedBy().equals(currentUser)) {
             throw new AccessDeniedException("You don't have permission to cancel this invitation");
         }
-
+        Long orgId = currentUser.getOrganization().getId();
+        if(!orgId.equals(invitation.getOrganization().getId())) {
+            throw new AccessDeniedException("You are not allowed to cancel this invitation");
+        }
         invitation.setStatus(InvitationStatus.CANCELLED);
         invitationRepository.save(invitation);
     }
@@ -124,7 +135,9 @@ public class InvitationService {
         if(userRepository.existsByEmail(invitation.getEmail())) {
             throw new DuplicateResourceException("Email already taken");
         }
-
+        if(invitation.getOrganization().getStatus() !=  OrganizationStatus.ACTIVE) {
+            throw new ResourceNotFoundException("Organization is not active");
+        }
         User user = new User();
         user.setFirstName(request.getFirstName());
         user.setUsername(request.getUsername());
@@ -132,9 +145,12 @@ public class InvitationService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setEmail(invitation.getEmail());
         user.setRole(invitation.getRole());
+        user.setOrganization(invitation.getOrganization());
+        user.setIsActive(true);
         User savedUser = userRepository.save(user);
         invitation.setStatus(InvitationStatus.ACCEPTED);
         invitation.setAcceptedAt(LocalDateTime.now());
+
         invitation.setAcceptedByUser(savedUser);
         Invitation save = invitationRepository.save(invitation);
         return convertToResponse(save);
@@ -159,8 +175,18 @@ public class InvitationService {
 
     @Transactional
     public InvitationResponse createInvitation(CreateInvitationRequest createInvitationRequest, User currentUser) {
-        if(existsByEmailAndStatus(createInvitationRequest.getEmail(), InvitationStatus.PENDING)) {
+        Long orgId = currentUser.getOrganization().getId();
+        if(invitationRepository.existsByEmailAndOrganizationIdAndStatus(createInvitationRequest.getEmail(),
+                orgId, InvitationStatus.PENDING)) {
             throw new DuplicateResourceException("Invitation already pending for this email");
+        }
+        if(currentUser.getOrganization().getStatus() != OrganizationStatus.ACTIVE) {
+            throw new IllegalStateException("Cannot invite to suspended organization");
+        }
+
+        // Check if already member
+        if(userRepository.existsByEmailAndOrganizationId(createInvitationRequest.getEmail(), orgId)) {
+            throw new DuplicateResourceException("User already member of organization");
         }
         Invitation invitation = new Invitation();
         invitation.setEmail(createInvitationRequest.getEmail());
@@ -169,6 +195,7 @@ public class InvitationService {
         invitation.setStatus(InvitationStatus.PENDING);
         invitation.setExpiresAt(LocalDateTime.now().plusDays(7));
         invitation.setInvitedBy(currentUser);
+        invitation.setOrganization(currentUser.getOrganization());
         Invitation saveUserInvitation = invitationRepository.save(invitation);
         emailService.sendInvitationEmail(currentUser, saveUserInvitation);
         return convertToResponse(saveUserInvitation);
