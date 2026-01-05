@@ -42,8 +42,8 @@ public class IssueController {
     }
 
     @GetMapping()
-    public ResponseEntity<Page<IssueResponse>> getAllIssues(Pageable pageable,
-                                                            @AuthenticationPrincipal User currentUser) {
+    public ResponseEntity<Page<IssueResponse>> getAllIssues(Pageable pageable) {
+        User currentUser = userContext.getCurrentUser();
         return ResponseEntity.ok(issueService.getAllIssues(pageable, currentUser));
     }
 
@@ -145,8 +145,8 @@ public class IssueController {
 
     @GetMapping("/search")
     public ResponseEntity<Page<IssueResponse>> searchIssues(@RequestParam String query,
-                                                            Pageable pageable,
-                                                            @AuthenticationPrincipal User currentUser){
+                                                            Pageable pageable){
+        User currentUser = userContext.getCurrentUser();
         Page<IssueResponse> issueResponseList = issueService.searchIssues(query, pageable, currentUser);
         return ResponseEntity.ok(issueResponseList);
     }
@@ -158,8 +158,8 @@ public class IssueController {
                                                             @RequestParam(required = false) IssueType type,
                                                             @RequestParam(required = false) Long assigneeId,
                                                             @RequestParam(required = false) Long reporterId,
-                                                            Pageable pageable,
-                                                            @AuthenticationPrincipal User currentUser){
+                                                            Pageable pageable){
+        User currentUser = userContext.getCurrentUser();
         return ResponseEntity.ok(issueService.filterIssues(
                 projectId, status, priority, type, assigneeId, reporterId, pageable, currentUser
         ));

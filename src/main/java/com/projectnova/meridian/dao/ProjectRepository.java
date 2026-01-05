@@ -67,4 +67,6 @@ public interface ProjectRepository extends JpaRepository<Project,Long> {
                                                @Param("status") ProjectStatus status,
                                                @Param("ownerId") Long ownerId,
                                                Pageable pageable);
+
+    Page<Project> findByOrganizationIdAndOwnerId(Long orgId, Long ownerId, Pageable pageable);
 }

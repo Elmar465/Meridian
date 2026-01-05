@@ -47,8 +47,9 @@ public class ProjectService {
     }
 
 
-    public Page<ProjectResponse> getProjectsByOwnerId(Long ownerId, Pageable pageable) {
-        Page<Project>  projects = projectRepository.findByOwnerId(ownerId, pageable);
+    public Page<ProjectResponse> getProjectsByOwnerId(Long ownerId, Pageable pageable, User currentUser) {
+        Long orgId = currentUser.getOrganization().getId();
+        Page<Project> projects = projectRepository.findByOrganizationIdAndOwnerId(orgId, ownerId, pageable);
         return projects.map(this::convertToResponse);
     }
 
@@ -130,13 +131,15 @@ public class ProjectService {
     }
 
     public Page<ProjectResponse> getAllProjects(Pageable pageable, User currentUser) {
-        Long  orgId = currentUser.getOrganization().getId();
+        Long orgId = currentUser.getOrganization().getId();
+        System.out.println("=== FILTERING BY ORG ID: " + orgId + " ===");
         Page<Project> projects = projectRepository.findByOrganizationId(orgId, pageable);
+        System.out.println("=== FOUND PROJECTS: " + projects.getTotalElements() + " ===");
         return projects.map(this::convertToResponse);
     }
-
-    public Page<ProjectResponse> getProjectsByStatus(ProjectStatus status, Pageable pageable) {
-        Page<Project> projects = projectRepository.findByStatus(status, pageable);
+    public Page<ProjectResponse> getProjectsByStatus(ProjectStatus status, Pageable pageable, User currentUser) {
+       Long   orgId = currentUser.getOrganization().getId();
+       Page<Project> projects = projectRepository.findByOrganizationIdAndStatus(orgId, status, pageable);
         return projects.map(this::convertToResponse);
     }
 

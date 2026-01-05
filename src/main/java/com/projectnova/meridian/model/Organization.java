@@ -2,9 +2,7 @@ package com.projectnova.meridian.model;
 
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 
@@ -13,6 +11,8 @@ import java.util.List;
 
 @Entity
 @Data
+@ToString(exclude = {"owner", "members", "projects", "invitations"})
+@EqualsAndHashCode(exclude = {"owner", "members", "projects", "invitations"})
 @NoArgsConstructor
 @AllArgsConstructor
 public class Organization {

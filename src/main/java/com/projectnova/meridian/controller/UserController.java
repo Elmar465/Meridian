@@ -39,10 +39,8 @@ public class UserController {
 
 
     @PostMapping("/avatar")
-    public ResponseEntity<String> uploadAvatar(@RequestParam("file") MultipartFile file,
-                                               @AuthenticationPrincipal UserDetails userDetails) throws IOException {
-        User user = userRepository.findByUsername(userDetails.getUsername()).orElseThrow(()
-                -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+    public ResponseEntity<String> uploadAvatar(@RequestParam("file") MultipartFile file) throws IOException {
+      User user = userContext.getCurrentUser();
       String avatarUrl =   userService.uploadAvatar(file,user);
         return ResponseEntity.ok(avatarUrl);
     }
@@ -50,48 +48,50 @@ public class UserController {
 
     @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser (@PathVariable Long id, @AuthenticationPrincipal User currentUser)
+    public ResponseEntity<Void> deleteUser (@PathVariable Long id)
             throws AccessDeniedException {
+        User currentUser = userContext.getCurrentUser();
         userService.deleteUser(id, currentUser);
         return ResponseEntity.noContent().build();
     }
 
 
     @PutMapping("/change-password")
-    public ResponseEntity<String> changePassword (@Valid @RequestBody ChangePasswordRequest changePasswordRequest,
-                                                @AuthenticationPrincipal UserDetails   userDetails) {
-        User user  = userRepository.findByUsername(userDetails.getUsername()).orElseThrow(()
-                -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public ResponseEntity<String> changePassword (@Valid @RequestBody ChangePasswordRequest changePasswordRequest)
+    {
+       User user = userContext.getCurrentUser();
         userService.changePassword(changePasswordRequest, user);
         return new  ResponseEntity<>(HttpStatus.OK);
 
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @RequestBody @Valid UpdateUserRequest request,
-                                                   @AuthenticationPrincipal User currentUser) throws AccessDeniedException {
+    public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @RequestBody @Valid UpdateUserRequest request)
+            throws AccessDeniedException {
+        User currentUser = userContext.getCurrentUser();
         UserResponse userResponse = userService.updateUser(id, request , currentUser);
         return new  ResponseEntity<>(userResponse, HttpStatus.OK);
     }
 
     @GetMapping("/search")
     public ResponseEntity<Page<UserResponse>> searchUsers(@RequestParam String searchTerm,
-                                                          Pageable pageable,
-                                                          @AuthenticationPrincipal User currentUser) {
+                                                          Pageable pageable) {
+        User currentUser = userContext.getCurrentUser();
         Page<UserResponse> users = userService.searchUsers(searchTerm, pageable,currentUser);
         return ResponseEntity.ok(users);
     }
     @GetMapping("/me")
-    public ResponseEntity<UserResponse> getCurrentUser(@AuthenticationPrincipal User currentUser)
+    public ResponseEntity<UserResponse> getCurrentUser()
             throws AccessDeniedException {
+        User currentUser = userContext.getCurrentUser();
         UserResponse user = userService.getUserById(currentUser.getId(), currentUser);
         return ResponseEntity.ok(user);
     }
     @GetMapping("/filter")
     public ResponseEntity<Page<UserResponse>> filterUsers(@RequestParam(required = false) UserRole role,
                                                           @RequestParam(required = false ) Boolean isActive,
-                                                          Pageable pageable,
-                                                          @AuthenticationPrincipal User currentUser) {
+                                                          Pageable pageable) {
+        User currentUser = userContext.getCurrentUser();
         Page<UserResponse> users = userService.filterUsers(role, isActive, pageable,currentUser);
         return  ResponseEntity.ok(users);
     }
@@ -118,16 +118,16 @@ public class UserController {
 
 
     @GetMapping("/active")
-    public ResponseEntity<Page<UserResponse>> getActiveUsers(Pageable pageable,
-                                                             @AuthenticationPrincipal User currentUser) {
+    public ResponseEntity<Page<UserResponse>> getActiveUsers(Pageable pageable) {
+        User currentUser = userContext.getCurrentUser();
         return  ResponseEntity.ok(userService.getActiveUsers(pageable,currentUser));
     }
 
 
     @GetMapping("/role/{role}")
     public ResponseEntity<Page<UserResponse>> getUsersByRole (@PathVariable UserRole role,
-                                                              Pageable pageable,
-                                                              @AuthenticationPrincipal User currentUser) {
+                                                              Pageable pageable) {
+        User currentUser =  userContext.getCurrentUser();
         Page<UserResponse> users = userService.getUsersByRole(role, pageable, currentUser);
         return ResponseEntity.ok(users);
     }
@@ -147,7 +147,8 @@ public class UserController {
 
     @GetMapping()
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'MEMBER')")
-    ResponseEntity<Page<UserResponse>> getAllUsers(Pageable pageable, @AuthenticationPrincipal User currentUser) {
+    ResponseEntity<Page<UserResponse>> getAllUsers(Pageable pageable) {
+        User currentUser = userContext.getCurrentUser();
         return ResponseEntity.ok(userService.getAllUsers(currentUser, pageable));
     }
 
@@ -158,8 +159,9 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    ResponseEntity<UserResponse> getUserById(@PathVariable Long id, @AuthenticationPrincipal User currentUser)
+    ResponseEntity<UserResponse> getUserById(@PathVariable Long id)
             throws AccessDeniedException {
+        User currentUser = userContext.getCurrentUser();
         UserResponse user = userService.getUserById(id, currentUser);
         return ResponseEntity.ok(user);
     }
