@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UserService {
 
-    private final UserRepository userRepository;
+    private  final   UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private static final long MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB for avatars
     private static final List<String> ALLOWED_FILE_TYPES = List.of(
